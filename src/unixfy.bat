@@ -1,12 +1,43 @@
-@set ROOT=%~dp0\..
+@echo off
+set ROOT=%~dp0..
 
-if not exist "C:\mingw" mkdir "C:\mingw"
-cd C:\mingw
-call %ROOT%\tools\download.bat https://gigenet.dl.sourceforge.net/project/mingw/Installer/mingw-get/mingw-get-0.6.2-beta-20131004-1/mingw-get-0.6.2-mingw32-beta-20131004-1-bin.tar.xz mingw-get.tar.xz
-call %ROOT%\tools\untar.bat mingw-get.tar.xz
-call %ROOT%\tools\untar.bat mingw-get.tar
-call C:\mingw\bin\mingw-get install gcc binutils mingw-runtime w32api mpc mpfr gmp pthreads zlib gettext gcc-core mpc mpfr gmp gcc-c++ gcc-objc gcc-fortran gcc-ada libexpat mingw32-make mingw-utils gdb msys
-call %ROOT%\tools\add_to_path.bat C:\mingw\bin
-call %ROOT%\tools\add_to_path.bat C:\mingw\msys\1.0\bin
-call %ROOT%\tools\add_to_path.bat C:\mingw\mingw32\bin
+cd C:\
+set MSYS=msys32
+set DOWNLOAD_URL=http://repo.msys2.org/distrib/i686/msys2-base-i686-20161025.tar.xz
+IF "%PROCESSOR_ARCHITECTURE%" == "AMD64" (
+    set MSYS=msys64
+    set DOWNLOAD_URL=http://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-20161025.tar.xz
+)
+IF NOT EXIST "C:\%MSYS%\etc\pacman.d\gnupg\pubring.gpg" (
+    call %ROOT%\tools\download.bat %DOWNLOAD_URL% %MSYS%.tar.xz
+    call %ROOT%\tools\untar.bat %MSYS%.tar.xz
+    del C:\%MSYS%.tar.xz
+    call %ROOT%\tools\untar.bat %MSYS%.tar
+    del C:\%MSYS%.tar
+) ELSE (
+    echo %MSYS% already installed
+    echo If this is a mistake, please delete C:\%MSYS%
+)
+call %ROOT%\tools\add_to_path.bat C:\%MSYS%\usr\bin
+call %ROOT%\tools\add_to_path.bat C:\%MSYS%
+IF NOT EXIST "C:\%MSYS%\etc\pacman.d\gnupg\pubring.gpg" (
+    @echo Initializing msys . . .
+    C:\%MSYS%\msys2.exe
+    GOTO waitloop
+) ELSE (
+    GOTO postinstall
+)
 
+:waitloop
+IF NOT EXIST "C:\%MSYS%\etc\pacman.d\gnupg\pubring.gpg" (
+    sleep 1
+    GOTO waitloop
+) ELSE (
+    @echo Please wait 30 seconds while msys is setup . . .
+    sleep 30
+    GOTO postinstall
+    echo Please restart your computer
+)
+
+:postinstall
+call %ROOT%\src\postinstall.bat %MSYS%
