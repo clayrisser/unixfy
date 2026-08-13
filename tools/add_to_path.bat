@@ -1,16 +1,28 @@
-@set TMP_PATH=%1;%PATH%;
-@setlocal EnableExtensions EnableDelayedExpansion
-@set _PATH_=
-@for %%a in ("%TMP_PATH:;=" "%") do @if not "%%~a" == "" (
-    @if "!_PATH_!" == "" @set "_PATH_=;%%~a;"
-    @set "_T_=!_PATH_:;%%~a;=x!"
-    @if "!_T_!" == "!_PATH_!" @set "_PATH_=!_PATH_!%%~a;"
-)
-@endlocal && @set "TMP_PATH=%_PATH_:~1,-1%
-@net session >nul 2>&1
-@if %errorLevel% == 0 (
-    @reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /f /v PATH /t REG_EXPAND_SZ /d "%TMP_PATH%"
-)
-@reg add "HKEY_CURRENT_USER\Environment" /f /v PATH /t REG_EXPAND_SZ /d "%TMP_PATH%"
-@set PATH=%TMP_PATH%
-@set TMP_PATH=
+@echo off
+REM Usage: add_to_path.bat [directory] [Auto|User|Machine]
+REM
+REM Prepends a single directory to the persisted Path. The registry value is read
+REM back unexpanded, so entries such as %SystemRoot%\system32 survive as
+REM indirections instead of being frozen to whatever they resolve to today.
+setlocal EnableExtensions
+
+set "TOOLS=%~dp0"
+
+if "%~1" == "" goto :usage
+
+set "SCOPE=%~2"
+if not defined SCOPE set "SCOPE=Auto"
+
+call "%TOOLS%lib\validate_powershell.bat"
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%TOOLS%lib\add_to_path.ps1" -entry "%~1" -scope "%SCOPE%"
+if errorlevel 1 exit /b %ERRORLEVEL%
+
+REM Make it usable in the current session too; every other shell picks it up on
+REM its next start.
+endlocal & set "PATH=%~1;%PATH%"
+exit /b 0
+
+:usage
+>&2 echo Usage: add_to_path.bat [directory] [Auto^|User^|Machine]
+exit /b 2
