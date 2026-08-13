@@ -82,7 +82,7 @@ tools\sleep.bat 5
 | `tools\unzip.bat` | Extracts a zip with `System.IO.Compression`. |
 | `tools\add_to_path.bat` | Prepends one directory to the persisted `Path`. |
 | `tools\sleep.bat` | Waits N seconds without spinning the CPU. |
-| `tools\elevate.bat` | Re-runs a command elevated. |
+| `tools\elevate.bat` | Re-runs a command elevated and exits with that command's exit code. |
 
 ### add_to_path
 

@@ -64,6 +64,12 @@ call :test_no_sleep_binary
 call :test_sleep_waits
 echo.
 
+echo -- elevate --
+call :test_elevate_usage
+call :test_elevate_missing_script
+call :test_elevate_propagates
+echo.
+
 echo ---------------------------------------
 echo   passed  %PASSED%
 echo   failed  %FAILED%
@@ -408,4 +414,56 @@ if %ELAPSED% GTR 1000 (
     goto :eof
 )
 call :pass "sleep 3 waited %ELAPSED% centiseconds"
+goto :eof
+
+REM ===========================================================================
+REM elevate
+REM
+REM Only the paths that refuse before doing anything, plus exit code
+REM propagation when the suite already happens to be elevated. Nothing here may
+REM raise a UAC prompt: a test run must not sit waiting on a dialog, and it
+REM must never actually run the installer.
+REM ===========================================================================
+
+:test_elevate_usage
+call "%TOOLS%\elevate.bat" >"%WORK%\elevate-usage.log" 2>&1
+set "RC=%ERRORLEVEL%"
+if "%RC%" == "0" (
+    call :fail "no arguments - expected a nonzero exit"
+    goto :eof
+)
+call :pass "no arguments exits %RC% with usage"
+goto :eof
+
+:test_elevate_missing_script
+call "%TOOLS%\elevate.bat" "%WORK%\definitely-not-here.bat" >"%WORK%\elevate-missing.log" 2>&1
+set "RC=%ERRORLEVEL%"
+if "%RC%" == "0" (
+    call :fail "missing script - reported success"
+    goto :eof
+)
+findstr /c:"does not exist" "%WORK%\elevate-missing.log" >nul 2>&1
+if errorlevel 1 (
+    call :fail "missing script - did not say why"
+    goto :eof
+)
+call :pass "missing script fails with exit %RC% before elevating"
+goto :eof
+
+:test_elevate_propagates
+REM elevate.ps1 runs the command in place when it is already elevated, so this
+REM is the one case where the whole chain can be exercised without a prompt.
+net session >nul 2>&1
+if errorlevel 1 (
+    call :skip "exit code propagation - needs an already elevated shell"
+    goto :eof
+)
+>"%WORK%\rc3.bat" echo @exit /b 3
+call "%TOOLS%\elevate.bat" "%WORK%\rc3.bat" >"%WORK%\elevate-rc3.log" 2>&1
+set "RC=%ERRORLEVEL%"
+if not "%RC%" == "3" (
+    call :fail "exit code propagation - expected 3 but got %RC%"
+    goto :eof
+)
+call :pass "the wrapped command's exit code 3 reaches the caller"
 goto :eof
